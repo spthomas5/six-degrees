@@ -7,9 +7,9 @@ from get_data import GetData
 
 gd = GetData()
 
-gd.get_coldplay_relations()
-for i in range(2):
-    gd.add_layer()
+# gd.get_coldplay_relations()
+# for i in range(2):
+#     gd.add_layer()
 
 gd.bfs()
 

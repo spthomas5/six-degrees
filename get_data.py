@@ -1,7 +1,8 @@
 import os
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-
+import sqlite3
+import json
 
 class GetData:
     def __init__(self):
@@ -16,8 +17,16 @@ class GetData:
         self.artist_names = []
         self.path = []
         self.songs = []
+        self.conn = sqlite3.connect('adj_list.db')
+        self.c = self.conn.cursor()
+
 
     def get_coldplay_relations(self):
+        self.c.execute("""CREATE TABLE IF NOT EXISTS adj_list (
+                        artist text,
+                        related blob
+                        )""")
+
         results = self.spotify.artist_albums(self.coldplay_uri, album_type='album,single')
         print("Accessed API")
 
@@ -57,6 +66,11 @@ class GetData:
         for artist in self.artists:
             if artist['name'] not in self.artist_names and artist['name'] != 'Coldplay':
                 self.artist_names.append(artist['name'])
+
+        # self.adj_dict.update({'Coldplay': self.artist_names})
+        blob = json.dumps(self.artist_names)
+        self.c.execute("INSERT INTO adj_list VALUES ('Coldplay', ?)", [blob])
+        self.conn.commit()
 
     def add_layer(self):
         print("Adding layer")
@@ -103,20 +117,27 @@ class GetData:
                 if a['name'] not in self.artist_names and a['name'] != artist:
                     self.artist_names.append(a['name'])
 
-            self.adj_dict.update({artist: self.artist_names})
+            # self.adj_dict.update({artist: self.artist_names})
+            blob = json.dumps(self.artist_names)
+            self.c.execute("INSERT INTO adj_list VALUES (?, ?)", [artist, blob])
+            self.conn.commit()
+
 
     def bfs(self):
         edge_to = {}
         dist = {}
         marked = {}
         queue = []
-
         print("Initializing breadth-first-search")
-        for node in self.adj_dict.keys():
-            edge_to[node] = None
-            marked[node] = False
-            dist[node] = -1
-            for child in self.adj_dict[node]:
+        self.c.execute("SELECT artist from adj_list")
+        artists = self.c.fetchall()
+        for node in artists:
+            edge_to[node[0]] = None
+            marked[node[0]] = False
+            dist[node[0]] = -1
+            self.c.execute("SELECT * FROM adj_list WHERE artist=?", (node))
+            children = json.loads(self.c.fetchone()[1])
+            for child in children:
                 edge_to[child] = None
                 marked[child] = False
                 dist[child] = -1
@@ -127,8 +148,13 @@ class GetData:
         print("Beginning BFS")
         while queue:
             v = queue.pop(0)
-            if v in self.adj_dict:
-                for vert in self.adj_dict[v]:
+            self.c.execute("SELECT artist from adj_list")
+            artists = self.c.fetchall()
+            artists = [item for item in artists if item[0] == v]
+            if artists:
+                self.c.execute("SELECT * FROM adj_list WHERE artist=?", (v,))
+                children = json.loads(self.c.fetchone()[1])
+                for vert in children:
                     if marked[vert]:
                         continue
                     else:
@@ -137,7 +163,7 @@ class GetData:
                         marked[vert] = True
                         dist[vert] = dist[v] + 1
 
-        v = 'JAY-Z'
+        v = 'Juice WRLD'
         chosen_artist = v
         if v in marked.keys() and marked[v] is True:
             self.path.append(v)
@@ -161,3 +187,61 @@ class GetData:
                         break
             print(self.path)
             print(self.songs)
+
+
+    # def bfs(self):
+    #     edge_to = {}
+    #     dist = {}
+    #     marked = {}
+    #     queue = []
+    #     print(self.adj_dict)
+    #     print("Initializing breadth-first-search")
+    #     for node in self.adj_dict.keys():
+    #         edge_to[node] = None
+    #         marked[node] = False
+    #         dist[node] = -1
+    #         for child in self.adj_dict[node]:
+    #             edge_to[child] = None
+    #             marked[child] = False
+    #             dist[child] = -1
+    #
+    #     queue.append('Coldplay')
+    #     marked['Coldplay'] = True
+    #
+    #     print("Beginning BFS")
+    #     while queue:
+    #         v = queue.pop(0)
+    #         if v in self.adj_dict:
+    #             for vert in self.adj_dict[v]:
+    #                 if marked[vert]:
+    #                     continue
+    #                 else:
+    #                     queue.append(vert)
+    #                     edge_to[vert] = v
+    #                     marked[vert] = True
+    #                     dist[vert] = dist[v] + 1
+    #
+    #     v = 'JAY-Z'
+    #     chosen_artist = v
+    #     if v in marked.keys() and marked[v] is True:
+    #         self.path.append(v)
+    #         print("Creating path")
+    #         while edge_to[v]:
+    #             self.path.append(edge_to[v])
+    #             v = edge_to[v]
+    #     else:
+    #         print("No path")
+    #
+    #     if self.path:
+    #         print(f"Coldplay is connected to {chosen_artist}!")
+    #         self.path.reverse()
+    #
+    #         for i in range(len(self.path) - 1):
+    #             result = self.spotify.search(self.path[i] + " " + self.path[i + 1], type='track')
+    #             for j in range(5):
+    #                 if 'Remix' not in result['tracks']['items'][i]['name']:
+    #                     song = result['tracks']['items'][j]['name']
+    #                     self.songs.append(song)
+    #                     break
+    #         print(self.path)
+    #         print(self.songs)
