@@ -168,7 +168,7 @@ class GetData:
                         marked[vert] = True
                         dist[vert] = dist[v] + 1
 
-        v = 'U2'
+        v = 'Kendrick Lamar'
         chosen_artist = v
         if v in marked.keys() and marked[v] is True:
             self.path.append(v)
@@ -182,6 +182,14 @@ class GetData:
         if self.path:
             print(f"Coldplay is connected to {chosen_artist}!")
             self.path.reverse()
+
+            for i in range(len(self.path) - 1):
+                result = self.spotify.search(self.path[i] + " " + self.path[i + 1], type='track')
+                for i in range(5):
+                    if 'Remix' not in result['tracks']['items'][i]['name']:
+                        song = result['tracks']['items'][i]['name']
+                        self.songs.append(song)
+                        break
 
             print(self.path)
             print(self.songs)
