@@ -168,7 +168,7 @@ class GetData:
                         marked[vert] = True
                         dist[vert] = dist[v] + 1
 
-        v = 'Kendrick Lamar'
+        v = 'Lil Mosey'
         chosen_artist = v
         if v in marked.keys() and marked[v] is True:
             self.path.append(v)
@@ -185,11 +185,10 @@ class GetData:
 
             for i in range(len(self.path) - 1):
                 result = self.spotify.search(self.path[i] + " " + self.path[i + 1], type='track')
-                for i in range(5):
-                    if 'Remix' not in result['tracks']['items'][i]['name']:
-                        song = result['tracks']['items'][i]['name']
-                        self.songs.append(song)
-                        break
+                for j in range(5):
+                    song = result['tracks']['items'][j]['name']
+                    self.songs.append(song)
+                    break
 
             print(self.path)
             print(self.songs)
